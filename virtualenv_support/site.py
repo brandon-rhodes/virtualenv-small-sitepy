@@ -17,6 +17,7 @@ def virtualenv_init():
 
     libpython = os.path.dirname(__file__)
     prefix = sys.prefix
+    exec_prefix = sys.exec_prefix
 
     # Next, we read the cached sys.prefix of the Python installation
     # that was used to create this virtual environment.
@@ -42,11 +43,15 @@ def virtualenv_init():
     # value that the parent environment always expects, then set it back
     # when "site.py" is done working.
 
+    sys.prefix = sys.real_prefix
+    sys.exec_prefix = sys.real_prefix
+
     real_site_py = os.path.join(sys.path[0], 'site.py')
 
     sys.prefix = sys.real_prefix
     execfile(real_site_py, globals())
     sys.prefix = prefix
+    sys.exec_prefix = exec_prefix
 
     # Running the parent environment's "site.py" will not only have set
     # up things like OS-specific encodings, and defined functions for us
@@ -70,8 +75,8 @@ def virtualenv_init():
     # version of Python, and then move the newly-appended values to the
     # head of sys.path instead.
 
-    n = len(sys.path)
-    addsitedir(os.path.join(libpython, 'site-packages'))
+    #n = len(sys.path)
+    sitepy_globals['addsitedir'](os.path.join(libpython, 'site-packages'))
     #sys.path = sys.path[n:] + sys.path[:n]
 
 # Having defined the above function, we now run it.  If several virtual
