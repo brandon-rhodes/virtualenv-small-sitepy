@@ -31,8 +31,17 @@ def virtualenv_init():
     # modules symlinked into its "lib/pythonX.Y" directory.  But now we
     # can rewrite sys.path to point at the package directories of the
     # parent Python environment.
+    #
+    # Which paths should we rewrite?  Only the ones that Python sets for
+    # itself based on sys.prefix; we should skip the paths (if any) that
+    # come from the PYTHONPATH.
 
-    for i in range(len(sys.path)):
+    if 'PYTHONPATH' in os.environ:
+        skip = os.environ['PYTHONPATH'].count(':') + 1
+    else:
+        skip = 0
+
+    for i in range(skip, len(sys.path)):
         sys.path[i] = sys.path[i].replace(prefix, sys.real_prefix, 1)
 
     clean_sys_path = list(sys.path)  # save a copy
