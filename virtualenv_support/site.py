@@ -46,7 +46,9 @@ def virtualenv_init():
     sys.prefix = sys.real_prefix
     sys.exec_prefix = sys.real_prefix
 
-    real_site_py = os.path.join(sys.path[0], 'site.py')
+    real_site_py = os.path.join(
+        sys.real_prefix, 'lib', 'python' + sys.version[:3], 'site.py'
+        )
 
     sys.prefix = sys.real_prefix
     execfile(real_site_py, globals())
@@ -72,12 +74,9 @@ def virtualenv_init():
     # own "site-packages" directory.  We use the system Python's
     # "addsitedir()" routine to do this scanning, to make sure that
     # ".pth" files are discovered using the official logic of this
-    # version of Python, and then move the newly-appended values to the
-    # head of sys.path instead.
+    # version of Python.
 
-    #n = len(sys.path)
-    sitepy_globals['addsitedir'](os.path.join(libpython, 'site-packages'))
-    #sys.path = sys.path[n:] + sys.path[:n]
+    addsitedir(os.path.join(libpython, 'site-packages'))
 
 # Having defined the above function, we now run it.  If several virtual
 # environments are stacked on top of each other, then the function gets
