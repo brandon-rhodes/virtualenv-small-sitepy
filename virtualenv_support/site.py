@@ -59,12 +59,10 @@ def virtualenv_init():
     # it run correctly, we have to temporarily set sys.prefix and
     # sys.exec_prefix to the value that the parent environment expects,
     # then set them back when "site.py" is done working.
-    #
-    # Note that we always expect the system "site.py" to be in the first
-    # of the system sys.path directories (that is, the first directory
-    # after the directories that came from the PYTHONPATH).
 
-    real_site_py = os.path.join(sys.path[pythonpath_len], 'site.py')
+    real_site_py = os.path.join(
+        sys.real_prefix, 'lib', 'python' + sys.version[:3], 'site.py',
+        )
 
     sys.prefix = sys.real_prefix
     sys.exec_prefix = sys.real_prefix
