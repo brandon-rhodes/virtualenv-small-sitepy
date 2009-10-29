@@ -32,34 +32,42 @@ def virtualenv_init():
     # can rewrite sys.path to point at the package directories of the
     # parent Python environment.
     #
-    # Which paths should we rewrite?  Only the ones that Python sets for
-    # itself based on sys.prefix; we should skip the paths (if any) that
-    # come from the PYTHONPATH.
+    # At this point, sys.path consists of the paths from the PYTHONPATH
+    # variable, plus the paths built into the Python binary.  We first
+    # save a copy of the PYTHONPATH paths, so that we can move them back
+    # to the beginning of sys.path when we are all done.
 
     if 'PYTHONPATH' in os.environ:
-        skip = os.environ['PYTHONPATH'].count(':') + 1
+        pythonpath_len = os.environ['PYTHONPATH'].count(':') + 1
     else:
-        skip = 0
+        pythonpath_len = 0
 
-    for i in range(skip, len(sys.path)):
+    pythonpath_paths = sys.path[:pythonpath_len]
+    for i in range(pythonpath_len):
+        pythonpath_paths[i] = os.path.abspath(pythonpath_paths[i])
+
+    # Next, we rewrite the non-PYTHONPATH paths to point to the system
+    # Python instead of at this virtualenv.
+
+    for i in range(pythonpath_len, len(sys.path)):
         sys.path[i] = sys.path[i].replace(prefix, sys.real_prefix, 1)
 
     clean_sys_path = list(sys.path)  # save a copy
 
     # Now that the parent environment's packages are available on
     # sys.path, we are ready to invoke its own "site.py" file.  To make
-    # it run correctly, we have to temporarily set sys.prefix to the
-    # value that the parent environment always expects, then set it back
-    # when "site.py" is done working.
+    # it run correctly, we have to temporarily set sys.prefix and
+    # sys.exec_prefix to the value that the parent environment expects,
+    # then set them back when "site.py" is done working.
+    #
+    # Note that we always expect the system "site.py" to be in the first
+    # of the system sys.path directories (that is, the first directory
+    # after the directories that came from the PYTHONPATH).
+
+    real_site_py = os.path.join(sys.path[pythonpath_len], 'site.py')
 
     sys.prefix = sys.real_prefix
     sys.exec_prefix = sys.real_prefix
-
-    real_site_py = os.path.join(
-        sys.real_prefix, 'lib', 'python' + sys.version[:3], 'site.py'
-        )
-
-    sys.prefix = sys.real_prefix
     execfile(real_site_py, globals())
     sys.prefix = prefix
     sys.exec_prefix = exec_prefix
@@ -71,8 +79,8 @@ def virtualenv_init():
     # have supplemented sys.path with all of the directories that the
     # system Python uses for site packages.  If it turns out the creator
     # of this virtual environment does not want to use system-wide site
-    # packages, then we revert sys.path back to the pristine value it
-    # had before we let the system "site.py" monkey with it.
+    # packages, then we revert sys.path back to the pristine value that
+    # it had before we let the system "site.py" monkey with it.
 
     if os.path.exists(os.path.join(libpython, 'no-global-site-packages.txt')):
         sys.path = clean_sys_path
@@ -85,7 +93,27 @@ def virtualenv_init():
     # ".pth" files are discovered using the official logic of this
     # version of Python.
 
+    old_sys_path = list(sys.path)
     addsitedir(os.path.join(libpython, 'site-packages'))
+
+    # Finallly, since running addsitedir() adds paths both near the
+    # beginning and close to the end of the site.path (because the .pth
+    # files of certain notorious packages stick their own paths very
+    # early in the sys.path), we re-order sys.path to put our own
+    # site-packages first, but after the paths manually placed in
+    # PYTHONPATH.
+
+    old_paths = []
+    new_paths = []
+    for path in sys.path:
+        if path in pythonpath_paths:
+            continue
+        elif path in old_sys_path:
+            old_paths.append(path)
+        else:
+            new_paths.append(path)
+
+    sys.path = pythonpath_paths + new_paths + old_paths
 
 # Having defined the above function, we now run it.  If several virtual
 # environments are stacked on top of each other, then the function gets
